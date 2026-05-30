@@ -4,11 +4,14 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -48,7 +51,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        // Search functionality
+        // Search text watcher
         etSearch.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
@@ -58,12 +61,39 @@ public class MainActivity extends AppCompatActivity {
             @Override public void afterTextChanged(Editable s) {}
         });
 
-        ivSearchClear.setOnClickListener(v -> {
-            etSearch.setText("");
-            ivSearchClear.setVisibility(View.GONE);
+        // × button clears search
+        ivSearchClear.setOnClickListener(v -> clearSearch());
+
+        // Back press — if search is active, clear it; otherwise normal back
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (isSearchActive()) {
+                    clearSearch();
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
         });
 
         loadNotes();
+    }
+
+    private boolean isSearchActive() {
+        return etSearch.isFocused() || !etSearch.getText().toString().isEmpty();
+    }
+
+    private void clearSearch() {
+        etSearch.setText("");
+        etSearch.clearFocus();
+        ivSearchClear.setVisibility(View.GONE);
+        hideKeyboard();
+    }
+
+    private void hideKeyboard() {
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) imm.hideSoftInputFromWindow(etSearch.getWindowToken(), 0);
     }
 
     @Override
