@@ -2,7 +2,11 @@ package com.spmods.notes;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
@@ -12,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
@@ -20,6 +25,9 @@ public class MainActivity extends AppCompatActivity {
     private NotesAdapter adapter;
     private NotesDatabaseHelper dbHelper;
     private TextView tvEmpty;
+    private EditText etSearch;
+    private ImageView ivSearchClear;
+    private List<Note> allNotes = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -29,6 +37,8 @@ public class MainActivity extends AppCompatActivity {
         dbHelper = new NotesDatabaseHelper(this);
         recyclerView = findViewById(R.id.recyclerView);
         tvEmpty = findViewById(R.id.tvEmpty);
+        etSearch = findViewById(R.id.etSearch);
+        ivSearchClear = findViewById(R.id.ivSearchClear);
         FloatingActionButton fab = findViewById(R.id.fab);
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -36,6 +46,21 @@ public class MainActivity extends AppCompatActivity {
         fab.setOnClickListener(v -> {
             Intent intent = new Intent(this, NoteEditActivity.class);
             startActivity(intent);
+        });
+
+        // Search functionality
+        etSearch.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                filterNotes(s.toString());
+                ivSearchClear.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+            }
+            @Override public void afterTextChanged(Editable s) {}
+        });
+
+        ivSearchClear.setOnClickListener(v -> {
+            etSearch.setText("");
+            ivSearchClear.setVisibility(View.GONE);
         });
 
         loadNotes();
@@ -47,10 +72,30 @@ public class MainActivity extends AppCompatActivity {
         loadNotes();
     }
 
-    private void loadNotes() {
-        List<Note> notes = dbHelper.getAllNotes();
+    private void filterNotes(String query) {
+        List<Note> filtered = new ArrayList<>();
+        String q = query.toLowerCase().trim();
+        for (Note note : allNotes) {
+            if (note.getTitle().toLowerCase().contains(q) ||
+                note.getContent().toLowerCase().contains(q)) {
+                filtered.add(note);
+            }
+        }
+        updateRecycler(filtered);
+    }
 
-        if (notes.isEmpty()) {
+    private void loadNotes() {
+        allNotes = dbHelper.getAllNotes();
+        String currentQuery = etSearch != null ? etSearch.getText().toString() : "";
+        if (currentQuery.isEmpty()) {
+            updateRecycler(allNotes);
+        } else {
+            filterNotes(currentQuery);
+        }
+    }
+
+    private void updateRecycler(List<Note> notes) {
+        if (notes.isEmpty() && (etSearch == null || etSearch.getText().toString().isEmpty())) {
             recyclerView.setVisibility(View.GONE);
             tvEmpty.setVisibility(View.VISIBLE);
         } else {
